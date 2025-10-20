@@ -1,70 +1,72 @@
-# Getting Started with Create React App
+# Needle App — Transparent Presidential Election Forecast Simulator
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+*A passion project combining math, data visualization, and political forecasting.*
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## About This Project
 
-### `npm start`
+**Created in October 2024, published October 2025**  
+See [BACKGROUND.md](./BACKGROUND.md) for the full project history, technical write-up, and reflections.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Frustrated by the lack of transparency in major 2024 US presidential election models (FiveThirtyEight, Economist, Betting Markets, etc.), I built this web app to provide an exact, transparent probability distribution for Electoral College outcomes based on state-by-state inputs and to illustrate how much state-to-state correlation affects every forecast.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## Features
+- User-driven forecasts for 19 critical states
+- "Needle" and EV distribution charts
+- Correlation slider and per-state override
+- Scenario probability visualizer
+- Save/load custom forecast scenarios
+- Real-time probability/EV stats
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Example Screenshots
+<!-- Add screenshots here (main UI, needle visualization, etc.) -->
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Methodology Overview
+- You supply state-by-state presidential forecasts (with probabilities or margins)
+- Probabilities are derived using a custom [link function](https://en.wikipedia.org/wiki/Generalized_linear_model#Link_function):
+  
+  \[
+    P = \sin^2(45^\circ - 3 \times \text{margin})
+  \]
+  with mathematical motivation explained fully in [BACKGROUND.md](./BACKGROUND.md).
+- You set the "global" or per-state correlation (from fully independent to fully linked swings)
+- This drives an exact, non-simulated calculation of EV distributions using mixture of convolutions and [beta distribution](https://en.wikipedia.org/wiki/Beta_distribution) approaches, as detailed in [BACKGROUND.md](./BACKGROUND.md)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Installation & Running Locally
 
-### `npm run eject`
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+2. **Start the development server**
+   ```bash
+   npm start
+   ```
+   Open http://localhost:3000 in your browser.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Usage
+1. Enter your forecasts for swing states
+2. Adjust correlation for realism
+3. Explore outcome visualizations
+4. Save/load scenarios
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+---
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## License, Contributing, and More
+- License: [Add your license information here]
+- Contributions welcome (see [CONTRIBUTING.md](./CONTRIBUTING.md) if present)
+- For more technical and reflective notes, see [BACKGROUND.md](./BACKGROUND.md).
 
-## Learn More
+---
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Best,
+Chinmay Krishna

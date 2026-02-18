@@ -102,63 +102,6 @@ function betaContinuedFraction(x, a, b) {
   return h;
 }
 
-const BetaCDFGraph = ({ probability, correlation }) => {
-  const n = correlation === 0 ? 0 : 1 / (1 / correlation - 1);
-  const alpha = n * probability;
-  const beta = n * (1 - probability);
-
-  const data = {
-    labels: Array.from({ length: 11 }, (_, i) => i * 10),
-    datasets: [
-      {
-        label: 'Beta CDF',
-        data: Array.from({ length: 101 }, (_, i) => {
-          const x = i / 100;
-          if (correlation === 0) return probability * 100;
-          if (correlation === 1) return x < 1 - probability ? 0 : 100;
-          return (1 - betaCDF(1 - x, alpha, beta)) * 100;
-        }),
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 2,
-        fill: true,
-        backgroundColor: (context) => {
-          const chart = context.chart;
-          const { ctx, chartArea } = chart;
-          if (!chartArea) {
-            return null;
-          }
-          const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-          gradient.addColorStop(0, 'rgba(255, 0, 0, 0.5)');
-          gradient.addColorStop(1, 'rgba(0, 0, 255, 0.5)');
-          return gradient;
-        },
-        pointRadius: 0,
-      },
-    ],
-  };
-
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Probability (%)',
-        },
-      },
-    },
-  };
-
-  return (
-    <div>
-      <h3 className="text-lg font-bold mb-2">Beta CDF Graph</h3>
-      <Bar data={data} options={options} height={50} />
-    </div>
-  );
-};
-
 const NeedleComponent = ({ stateName, evs, defaultAngle, correlation, onAngleChange, onCorrelationChange, useGlobalCorrelation }) => {
   const [angle, setAngle] = useState(defaultAngle);
   const [isDragging, setIsDragging] = useState(false);
@@ -564,11 +507,13 @@ const App = () => {
   const [averageEVs, setAverageEVs] = useState(calculateAverageEVs());
   const [histogramData, setHistogramData] = useState(calculateHistogram());
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     setAverageEVs(calculateAverageEVs());
     setHistogramData(calculateHistogram());
     setScenarioProbability(calculateScenarioProbability());
   }, [states, selectedStates]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const handleAngleChange = (stateName, newAngle) => {
     setStates((prevStates) =>
@@ -1009,8 +954,6 @@ const App = () => {
                       const prob = getPercentage(state.defaultAngle); // Use the defined function
                       const displayProb = prob > 50.05 ? prob.toFixed(1) : (100 - prob).toFixed(1);
                       const label = prob > 50.05 ? 'R' : prob < 49.95 ? 'D' : ''; // No label for 50.0%
-                      const correlation = selectedStates[state.stateName] === 'R' ? '100.00' : selectedStates[state.stateName] === 'D' ? '0.00' : state.correlation.toFixed(2);
-
                       const updatedProb = selectedStates[state.stateName] === 'R' ? 100 : selectedStates[state.stateName] === 'D' ? 0 : prob;
                       const displayUpdatedProb = updatedProb < 50 ? `${(100 - updatedProb).toFixed(1)}%` : `${updatedProb.toFixed(1)}%`;
                       const updatedLabel = updatedProb > 50.05 ? 'R' : updatedProb < 49.95 ? 'D' : ''; // No label for 50.0%

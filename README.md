@@ -9,6 +9,8 @@
 **Created in October 2024, published October 2025**  
 See [BACKGROUND.md](./BACKGROUND.md) for the full project history, technical write-up, and reflections.
 
+**Live App:** [electoral-college-exact-probabiliti.vercel.app](https://electoral-college-exact-probabiliti.vercel.app)
+
 Frustrated by the lack of transparency in major 2024 US presidential election models (FiveThirtyEight, Economist, Betting Markets, etc.), I built this web app to provide an exact, transparent probability distribution for Electoral College outcomes based on state-by-state inputs and to illustrate how much state-to-state correlation affects every forecast.
 
 ---

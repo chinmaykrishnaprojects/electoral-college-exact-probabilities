@@ -419,6 +419,8 @@ const App = () => {
   const [showManipulator, setShowManipulator] = useState(false);
   const [selectedStates, setSelectedStates] = useState({});
   const [scenarioProbability, setScenarioProbability] = useState(0);
+  const [updatedProbabilities, setUpdatedProbabilities] = useState({});
+  const [conditionalInfo, setConditionalInfo] = useState(null);
 
   const calculateAverageEVs = () => {
     let demEVs = 191;
@@ -512,6 +514,7 @@ const App = () => {
     setAverageEVs(calculateAverageEVs());
     setHistogramData(calculateHistogram());
     setScenarioProbability(calculateScenarioProbability());
+    setUpdatedProbabilities(calculateUpdatedProbabilities());
   }, [states, selectedStates]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
@@ -675,10 +678,21 @@ const App = () => {
   };
 
   const handleSelectionChange = (stateName, selection) => {
-    setSelectedStates((prev) => ({
-      ...prev,
-      [stateName]: prev[stateName] === selection ? 'N' : selection, // Toggle selection
-    }));
+    const newSelection = selectedStates[stateName] === selection ? 'N' : selection; // Toggle selection
+    const newSelectedStates = { ...selectedStates, [stateName]: newSelection };
+
+    if (newSelection === 'N') {
+      setConditionalInfo(null);
+    } else {
+      const priorProbability = scenarioProbability; // scenario probability before this click
+      const updatedProbability = calculateScenarioProbability(newSelectedStates);
+      const conditionalProbability = priorProbability > 0
+        ? (updatedProbability / priorProbability) * 100
+        : updatedProbability;
+      setConditionalInfo({ stateName, selection: newSelection, conditionalProbability });
+    }
+
+    setSelectedStates(newSelectedStates);
   };
 
   const getPercentage = (angle) => {
@@ -695,7 +709,7 @@ const App = () => {
     }
   };
 
-  const calculateScenarioProbability = () => {
+  const calculateScenarioProbability = (selections = selectedStates) => {
     const samples = 16384;
     let integralSum = 0;
     for (let i = 0; i < samples; i++) {
@@ -715,12 +729,69 @@ const App = () => {
         } else {
           stateProb = betaCDF(x_i, alpha, beta);
         }
-        product *= selectedStates[state.stateName] === 'R' ? stateProb : selectedStates[state.stateName] === 'D' ? 1 - stateProb : 1;
+        product *= selections[state.stateName] === 'R' ? stateProb : selections[state.stateName] === 'D' ? 1 - stateProb : 1;
       });
       integralSum += product;
     }
 
     return (integralSum / samples) * 100;
+  };
+
+  // For each state, the conditional probability of that state going R given the
+  // states currently locked in selectedStates (weights each sampled national
+  // scenario by how likely it is given the locked states, then averages that
+  // state's R-probability under those weights). This is what feeds the
+  // "Updated" column below: previously it just forced locked states to 0/100
+  // and left every other state unchanged from "Forecasted", so selecting a
+  // state never actually updated anyone else's odds.
+  const calculateUpdatedProbabilities = () => {
+    const samples = 4096;
+    const rSums = {};
+    states.forEach((state) => {
+      rSums[state.stateName] = 0;
+    });
+    let weightTotal = 0;
+
+    for (let i = 0; i < samples; i++) {
+      const scenario = (i + Math.random()) / samples;
+      let weight = 1;
+      const stateProbs = {};
+
+      states.forEach((state) => {
+        const x_i = scenario + Math.random() / samples;
+        const prob = Math.pow(Math.sin((state.defaultAngle + 90) / 2 * Math.PI / 180), 2);
+        const n = state.correlation === 0 ? 0 : 1 / (1 / state.correlation - 1);
+        const alpha = n * (1 - prob);
+        const beta = n * (prob);
+        let stateProb;
+        if (state.correlation === 0) {
+          stateProb = prob;
+        } else if (state.correlation === 1) {
+          stateProb = x_i < 1 - prob ? 0 : 1;
+        } else {
+          stateProb = betaCDF(x_i, alpha, beta);
+        }
+        stateProbs[state.stateName] = stateProb;
+
+        const selection = selectedStates[state.stateName];
+        if (selection === 'R') weight *= stateProb;
+        else if (selection === 'D') weight *= 1 - stateProb;
+      });
+
+      weightTotal += weight;
+      states.forEach((state) => {
+        rSums[state.stateName] += weight * stateProbs[state.stateName];
+      });
+    }
+
+    const updated = {};
+    states.forEach((state) => {
+      const forecastedProb = Math.pow(Math.sin((state.defaultAngle + 90) / 2 * Math.PI / 180), 2) * 100;
+      updated[state.stateName] = weightTotal > 0
+        ? (rSums[state.stateName] / weightTotal) * 100
+        : forecastedProb;
+    });
+    return updated;
   };
 
   const scenarioCDFData = {
@@ -933,6 +1004,11 @@ const App = () => {
             <div className="w-1/3 pr-4">
               <div className="mb-2">
                 <p className="text-xl font-bold text-center">Scenario Probability: {scenarioProbability.toFixed(2)}%</p>
+                {conditionalInfo && (
+                  <p className="text-center text-sm text-gray-700">
+                    P({conditionalInfo.stateName} = {conditionalInfo.selection} | other selections): {conditionalInfo.conditionalProbability.toFixed(2)}%
+                  </p>
+                )}
               </div>
               <Bar data={scenarioCDFData} options={scenarioCDFOptions} height={800} width={1200} />
             </div>
@@ -954,7 +1030,12 @@ const App = () => {
                       const prob = getPercentage(state.defaultAngle); // Use the defined function
                       const displayProb = prob > 50.05 ? prob.toFixed(1) : (100 - prob).toFixed(1);
                       const label = prob > 50.05 ? 'R' : prob < 49.95 ? 'D' : ''; // No label for 50.0%
-                      const updatedProb = selectedStates[state.stateName] === 'R' ? 100 : selectedStates[state.stateName] === 'D' ? 0 : prob;
+                      const conditionalProb = updatedProbabilities[state.stateName];
+                      const updatedProb = selectedStates[state.stateName] === 'R'
+                        ? 100
+                        : selectedStates[state.stateName] === 'D'
+                          ? 0
+                          : (conditionalProb !== undefined ? conditionalProb : prob);
                       const displayUpdatedProb = updatedProb < 50 ? `${(100 - updatedProb).toFixed(1)}%` : `${updatedProb.toFixed(1)}%`;
                       const updatedLabel = updatedProb > 50.05 ? 'R' : updatedProb < 49.95 ? 'D' : ''; // No label for 50.0%
 

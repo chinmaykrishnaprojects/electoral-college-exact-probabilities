@@ -154,6 +154,76 @@ export function impliedRho(ps, target, need) {
   return (lo + hi) / 2;
 }
 
+// Whole-chamber engine. Near-certain races (p <= eps or >= 1-eps) are held fixed so the House (435) stays fast.
+// locks: {raceIdx: true(R)/false(D)}. Returns dist over total R wins (length n+1) and each race's conditional P(R).
+export function chamber(ps, rho, locks = {}, eps = 0.003) {
+  const n = ps.length;
+  let base = 0;
+  const V = [], L = [];
+  ps.forEach((p, i) => {
+    if (i in locks) { L.push(i); if (locks[i]) base++; } else if (p <= eps) { /* D, fixed */ } else if (p >= 1 - eps) base++; else V.push(i);
+  });
+  const rows = [...V, ...L];
+  const qm = condMatrix(rows.map((i) => ps[i]), rho);
+  const qOf = {};
+  rows.forEach((i, k) => { qOf[i] = qm[k]; });
+  const w = new Float64Array(NX).fill(1);
+  L.forEach((i) => { const row = qOf[i]; const isR = locks[i]; for (let j = 0; j < NX; j++) w[j] *= isR ? row[j] : 1 - row[j]; });
+  const m = V.length;
+  const out = new Float64Array(n + 1);
+  const d = new Float64Array(m + 1);
+  let ws = 0;
+  for (let j = 0; j < NX; j++) {
+    const wj = w[j];
+    if (wj === 0) continue;
+    d.fill(0); d[0] = 1;
+    for (let k = 0; k < m; k++) {
+      const qi = qOf[V[k]][j];
+      for (let t = k + 1; t >= 1; t--) d[t] = d[t] * (1 - qi) + d[t - 1] * qi;
+      d[0] *= 1 - qi;
+    }
+    for (let t = 0; t <= m; t++) out[base + t] += wj * d[t];
+    ws += wj;
+  }
+  for (let t = 0; t <= n; t++) out[t] /= ws || 1;
+  const cond = ps.map((p, i) => {
+    if (i in locks) return locks[i] ? 1 : 0;
+    const row = qOf[i];
+    if (!row) return p;
+    let s = 0;
+    for (let j = 0; j < NX; j++) s += w[j] * row[j];
+    return ws ? s / ws : p;
+  });
+  return { dist: out, cond };
+}
+
+// P(R wins >= t | x) on the scenario grid, for each threshold t (cross-chamber view)
+export function perX(ps, rho, thresholds, eps = 0.003) {
+  let base = 0;
+  const V = [];
+  ps.forEach((p, i) => { if (p >= 1 - eps) base++; else if (p > eps) V.push(i); });
+  const qm = condMatrix(V.map((i) => ps[i]), rho);
+  const m = V.length;
+  const res = thresholds.map(() => new Float64Array(NX));
+  const d = new Float64Array(m + 1);
+  for (let j = 0; j < NX; j++) {
+    d.fill(0); d[0] = 1;
+    for (let k = 0; k < m; k++) {
+      const qi = qm[k][j];
+      for (let t = k + 1; t >= 1; t--) d[t] = d[t] * (1 - qi) + d[t - 1] * qi;
+      d[0] *= 1 - qi;
+    }
+    for (let a = 0; a < thresholds.length; a++) {
+      let s = 0;
+      for (let t = Math.max(0, thresholds[a] - base); t <= m; t++) s += d[t];
+      res[a][j] = s;
+    }
+  }
+  return res;
+}
+
+export const mean = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+
 // sin^2 link from the 2024 needle: angle in [-90, 90] -> P(R)
 export const angleToP = (a) => Math.pow(Math.sin(((a + 90) / 2) * Math.PI / 180), 2);
 export const pToAngle = (p) => 2 * Math.asin(Math.sqrt(Math.min(Math.max(p, 0), 1))) * 180 / Math.PI - 90;

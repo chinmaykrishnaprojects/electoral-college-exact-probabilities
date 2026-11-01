@@ -66,5 +66,30 @@ data = dict(asof=time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()), r_hold=R_HO
             hist=hist, pairs=pairs, calibration=calsum,
             implied=[dict(name=r["name"], rho=r["implied_rho"], vol=r["vol"]) for r in json.load(open(os.path.join(D, "fit.json")))["beta"]["rows"]],
             fit=dict(beta_rho_joint=fit_json["beta"]["rho"], gauss_rho_joint=fit_json["gauss"]["rho"]) if (fit_json := json.load(open(os.path.join(D, "fit.json")))) else {})
+HG = json.load(open(os.path.join(D, "house_gov.json"), encoding="utf-8"))
+H2 = json.load(open(os.path.join(D, "history2.json")))
+FA = json.load(open(os.path.join(D, "fit_all.json")))
+FH = json.load(open(os.path.join(D, "fit_house.json")))
+
+
+def natm(series):
+    for k, v in HG["nat"].items():
+        if v["series"] == series: return [dict(sub=m["sub"], bid=m["bid"], ask=m["ask"], mid=round(m["mid"], 4), vol=round(m["vol"])) for m in v["markets"]]
+    return []
+
+
+def clean(name):
+    return None if not name else name.replace("’", "'")
+
+
+house = [dict(id=k, p=v["p"], liq=v["liq"], r=clean(v.get("r")), d=clean(v.get("d")), ind=v.get("ind", False), assumed=v.get("assumed", False))
+         for k, v in HG["house"].items()]
+gov = [dict(st=k, p=v["p"], liq=v["liq"], r=clean(v.get("r")), d=clean(v.get("d")), combo=v.get("from_combo", False)) for k, v in HG["gov"].items()]
+data["house"] = dict(races=house, buckets=natm("KXDHOUSESEATS"), control=natm("CONTROLH"), shift=FH)
+data["gov"] = dict(races=gov, hold=dict(D=["DE", "KY", "NJ", "NC", "VA", "WA"], R=["IN", "LA", "MS", "MO", "MT", "ND", "UT", "WV"]),
+                   wins=natm("KXGOVWINS"), swing_sweep=natm("KXDEMSWINGSTATEGOVSWEEP"))
+data["nat"] = dict(balance=natm("KXBALANCEPOWERCOMBO"), popvote=FA["popvote"], fit_all=dict(rho=FA["rho"], balance=FA["balance"]),
+                   ne_sweep=natm("KXDEMNEWENGLANDSWEEP"))
+data["hist2"] = H2
 json.dump(data, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 print("wrote", OUT, os.path.getsize(OUT) // 1024, "KB;", len(combos), "combo/ladder markets; hist days", len(rows), "; cal kinds", list(calsum))

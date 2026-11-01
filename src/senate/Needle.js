@@ -67,7 +67,7 @@ export default function Needle({ race, p, market, onChange, locked }) {
         <circle cx={R} cy={R} r="5" fill="#111" />
       </svg>
       <div className="text-xs text-gray-600 text-center leading-tight" style={{ maxWidth: 2 * R + 16 }}>
-        {race.d} v {race.r}
+        {race.d || race.r ? `${race.d || '?'} v ${race.r || '?'}` : ''}
       </div>
       {moved && (
         <button className="text-xs text-blue-700 underline" onClick={() => onChange(race.st, market)}>

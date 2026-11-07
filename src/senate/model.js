@@ -236,3 +236,76 @@ export function probColor(pR, alpha = 1) {
   const c = t < 0.5 ? lerp(blue, mid, t / 0.5) : lerp(mid, red, (t - 0.5) / 0.5);
   return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
 }
+
+// ---------- replay helpers (results tab) ----------
+// log-likelihood over the x grid of a set of called races: calls = [[qRow, isR], ...]
+export function logW(calls) {
+  const lw = new Float64Array(NX);
+  for (const [row, isR] of calls) {
+    for (let j = 0; j < NX; j++) {
+      const v = isR ? row[j] : 1 - row[j];
+      lw[j] += Math.log(Math.max(v, 1e-300));
+    }
+  }
+  return lw;
+}
+
+export function normW(lw) {
+  let m = -Infinity;
+  for (let j = 0; j < NX; j++) if (lw[j] > m) m = lw[j];
+  const w = new Float64Array(NX);
+  let s = 0;
+  for (let j = 0; j < NX; j++) { w[j] = Math.exp(lw[j] - m); s += w[j]; }
+  for (let j = 0; j < NX; j++) w[j] /= s;
+  return w;
+}
+
+export function wQuantiles(w, qs = [0.05, 0.25, 0.5, 0.75, 0.95]) {
+  const out = [];
+  let c = 0, k = 0;
+  for (let j = 0; j < NX && k < qs.length; j++) {
+    const c2 = c + w[j];
+    while (k < qs.length && c2 >= qs[k]) { out.push((j + (qs[k] - c) / (w[j] || 1)) / NX); k++; }
+    c = c2;
+  }
+  while (out.length < qs.length) out.push(1);
+  return out;
+}
+
+// exact seat distribution + conditional P(R) for every race, given precomputed q rows,
+// locks {i: bool} and scenario weights w (already including the locks' likelihood).
+export function mixChamber(ps, q, locks, w, eps = 0.003, stride = 1) {
+  const n = ps.length;
+  let base = 0;
+  const V = [];
+  ps.forEach((p, i) => {
+    if (i in locks) { if (locks[i]) base++; } else if (p <= eps) { /* fixed D */ } else if (p >= 1 - eps) base++; else V.push(i);
+  });
+  const m = V.length;
+  const out = new Float64Array(n + 1);
+  const d = new Float64Array(m + 1);
+  for (let j0 = 0; j0 < NX; j0 += stride) {
+    let wj = 0;
+    for (let u = j0; u < Math.min(NX, j0 + stride); u++) wj += w[u];
+    if (wj < 1e-9) continue;
+    const j = Math.min(NX - 1, j0 + (stride >> 1));
+    d.fill(0); d[0] = 1;
+    for (let k = 0; k < m; k++) {
+      const qi = q[V[k]][j];
+      for (let t = k + 1; t >= 1; t--) d[t] = d[t] * (1 - qi) + d[t - 1] * qi;
+      d[0] *= 1 - qi;
+    }
+    for (let t = 0; t <= m; t++) out[base + t] += wj * d[t];
+  }
+  let s = 0;
+  for (let t = 0; t <= n; t++) s += out[t];
+  for (let t = 0; t <= n; t++) out[t] /= s || 1;
+  const cond = ps.map((p, i) => {
+    if (i in locks) return locks[i] ? 1 : 0;
+    let v = 0;
+    const row = q[i];
+    for (let j = 0; j < NX; j++) v += w[j] * row[j];
+    return v;
+  });
+  return { dist: out, cond };
+}

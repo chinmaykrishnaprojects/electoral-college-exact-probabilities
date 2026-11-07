@@ -15,3 +15,7 @@ python fit_all.py > /dev/null
 python fit_house.py > /dev/null
 [ -f data/calibration.json ] || python calibration.py > /dev/null
 python build_data.py ../../src/senate/data.json
+
+# 2026 results retrospective (settled markets + daily history -> src/senate/retro.json)
+python scripts/senate2026/pull_results.py
+python scripts/senate2026/retro.py src/senate/retro.json

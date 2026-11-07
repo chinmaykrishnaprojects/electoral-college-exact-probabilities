@@ -3,10 +3,12 @@ import App from './App';
 import Governors2026 from './senate/Governors2026';
 import House2026 from './senate/House2026';
 import Overview from './senate/Overview';
+import Retro2026 from './senate/Retro2026';
 import Senate2026 from './senate/Senate2026';
 
 const TABS = [
-  { id: 'overview-2026', label: '2026 Overview' },
+  { id: 'results-2026', label: '2026 Results' },
+  { id: 'overview-2026', label: 'Forecast' },
   { id: 'senate-2026', label: 'Senate' },
   { id: 'house-2026', label: 'House' },
   { id: 'governors-2026', label: 'Governors' },
@@ -15,7 +17,7 @@ const TABS = [
 
 const fromHash = () => {
   const h = window.location.hash.replace('#', '');
-  return TABS.some((t) => t.id === h) ? h : 'overview-2026';
+  return TABS.some((t) => t.id === h) ? h : 'results-2026';
 };
 
 export default function Root() {
@@ -39,6 +41,7 @@ export default function Root() {
     <div className="min-h-screen" style={{ background: '#f6f5f2' }}>
       <Nav tab={tab} />
       <main className="w-full mx-auto px-3 sm:px-6 py-5" style={{ maxWidth: 1600 }}>
+        {tab === 'results-2026' && <Retro2026 />}
         {tab === 'overview-2026' && <Overview go={go} />}
         {tab === 'senate-2026' && <Senate2026 />}
         {tab === 'house-2026' && <House2026 />}

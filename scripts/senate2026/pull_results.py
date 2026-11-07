@@ -116,5 +116,14 @@ for name, ev in [("senate", "CONTROLS-2026"), ("house", "CONTROLH-2026")]:
     ms = event_markets(ev)
     ctl[name] = [dict(t=m["ticker"], res=m.get("result"), close=ts(m.get("close_time"))) for m in ms]
 print({k: len(v) for k, v in night.items()}, ctl)
+# races not yet settled: keep today's price as soft evidence (never treated as a call)
+pending = {}
+for r, j in zip(races, jobs):
+    if r["won_r"] is None and j[3]:
+        m = get(f"/markets/{j[3][0]}", use_cache=False)["market"]
+        b, a, l = [float(m.get(k) or 0) for k in ("yes_bid_dollars", "yes_ask_dollars", "last_price_dollars")]
+        pending[f'{r["ch"]}|{r["key"]}'] = round((b + a) / 2 if a > 0 and a - b < 0.1 else l, 4)
+json.dump(pending, open(os.path.join(D, "pending.json"), "w"))
+print("pending", pending)
 json.dump(dict(races=races, night=night, control=ctl, pulled=time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())),
           open(os.path.join(D, "results.json"), "w"))
